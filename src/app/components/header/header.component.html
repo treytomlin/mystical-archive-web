@@ -1,27 +1,14 @@
 <mat-toolbar>
     <mat-toolbar-row>
         <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Example icon-button with a menu">
-            <mat-icon>more_vert</mat-icon>
+            <mat-icon>menu</mat-icon>
           </button>
           <mat-menu #menu="matMenu">
-            <button mat-menu-item>
-              <mat-icon>dialpad</mat-icon>
-              <span>Redial</span>
-            </button>
-            <button mat-menu-item disabled>
-              <mat-icon>voicemail</mat-icon>
-              <span>Check voice mail</span>
-            </button>
-            <button mat-menu-item>
-              <mat-icon>notifications_off</mat-icon>
-              <span>Disable alerts</span>
+            <button routerLink="/collection" routerLinkActive="active" mat-menu-item>
+              <mat-icon>playing_cards</mat-icon>
+              <span>My Collection</span>
             </button>
           </mat-menu>
-
-          
-        <button mat-icon-button class="menu-icon" aria-label="button with menu icon">
-            <mat-icon>menu</mat-icon>
-        </button>
         <span>{{title}}</span>
         <span class="menu-spacer"></span>
         <button mat-icon-button class="add-icon" aria-label="button with menu icon">
@@ -30,8 +17,8 @@
         <button mat-icon-button class="cards-icon" aria-label="button with menu icon">
             <mat-icon>inventory_2</mat-icon>
         </button>
-        <button mat-icon-button class="menu-icon" aria-label="button with menu icon">
-            <mat-icon>bedtime</mat-icon>
+        <button routerLink="/search" routerLinkActive="active" mat-icon-button class="menu-icon">
+            <mat-icon>search</mat-icon>
         </button>
     </mat-toolbar-row>
 </mat-toolbar>

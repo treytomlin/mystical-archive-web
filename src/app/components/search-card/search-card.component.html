@@ -1,0 +1,44 @@
+<!-- 
+  This HTML snippet should be placed within your Angular component's template.
+  It uses the mat-form-field component for the standard Material Design text field styling.
+
+  Make sure you have imported MatFormFieldModule, MatInputModule, and MatIconModule 
+  in the Angular module where this component is declared.
+-->
+<div class="wrapper">
+<!-- Centering container -->
+    <form class="item1">
+
+        <mat-form-field appearance="fill">
+        
+        <!-- The label that appears inside the form field outline -->
+        <mat-label>Search</mat-label>
+        
+        <!-- 
+            The input element itself.
+            - The `matInput` directive is required for it to work within a <mat-form-field>.
+            - `#searchInput` is a template reference variable that lets us easily access the input's value.
+            - `(keyup.enter)="search(searchInput.value)"` is the key part. It listens for the 'keyup'
+            event and, if the key is 'Enter', it calls the `search()` method in your component,
+            passing the current value of the input field.
+        -->
+        <input matInput #searchInput type="text" placeholder="e.g., Sol Ring, MOM002" (keyup.enter)="search(searchInput.value)">
+        <mat-icon matSuffix (click)=search(searchInput.value)>search</mat-icon>
+        </mat-form-field>
+    </form>
+
+    <mat-card class="example-card" appearance="outlined">
+        <span matBadge="1" matBadgeOverlap="false"></span>
+        <img mat-card-image src="https://cards.scryfall.io/normal/front/7/2/7201ee12-9104-48d8-aeec-08a318c8ee10.jpg?1726286614" alt="Photo of a Shiba Inu">
+        <mat-card-content>
+          <p>
+            "Card Prices, set symbol? foil, condition"
+          </p>
+        </mat-card-content>
+        <mat-card-actions>
+          <button matButton>LIKE</button>
+          <button matButton>SHARE</button>
+        </mat-card-actions>
+      </mat-card>
+      
+</div>
