@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scryfall Card Search</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .custom-focus-ring:focus {
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.5);
+            outline: none;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-lg">
+        <h1 class="text-2xl sm:text-3xl font-bold text-center text-gray-800 mb-6">Scryfall Card Search</h1>
+
+        <div class="flex flex-col sm:flex-row gap-3 mb-6">
+            <input type="text" id="searchInput" placeholder="e.g., MH101, MOM002" class="flex-grow p-3 border border-gray-300 rounded-lg custom-focus-ring focus:border-blue-500 transition-shadow duration-150 ease-in-out" aria-label="Enter card code and number">
+            <button id="submitButton" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                Search
+            </button>
+        </div>
+
+        <div id="loadingIndicator" class="hidden">
+            <div class="loader"></div>
+            <p class="text-center text-gray-600">Fetching card data...</p>
+        </div>
+
+        <div id="results" class="mt-6 space-y-4">
+            <div id="errorMessage" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg" role="alert">
+                <strong class="font-bold">Error:</strong>
+                <span class="block sm:inline" id="errorText"></span>
+            </div>
+
+            <div id="cardInfo" class="hidden bg-gray-50 p-6 rounded-lg shadow">
+                <h2 id="cardName" class="text-xl sm:text-2xl font-semibold text-gray-700 mb-3"></h2>
+                <img id="cardImage" src="https://placehold.co/300x418/E2E8F0/4A5568?text=Card+Image" alt="Card Image" class="mx-auto rounded-lg shadow-md mb-4 w-full max-w-xs sm:max-w-sm h-auto" onerror="this.onerror=null; this.src='https://placehold.co/300x418/E2E8F0/4A5568?text=Image+Not+Found';">
+                <div class="space-y-2 text-sm text-gray-600">
+                    <p><strong>Set:</strong> <span id="cardSet"></span></p>
+                    <p><strong>Collector Number:</strong> <span id="cardCollectorNumber"></span></p>
+                    <p><strong>Type:</strong> <span id="cardType"></span></p>
+                    <p><strong>Oracle Text:</strong> <span id="cardOracleText" class="whitespace-pre-wrap"></span></p>
+                    <p>
+                        <a id="scryfallLink" href="#" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">
+                            View on Scryfall
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get DOM elements
+        const searchInput = document.getElementById('searchInput');
+        const submitButton = document.getElementById('submitButton');
+        const resultsDiv = document.getElementById('results');
+        const cardInfoDiv = document.getElementById('cardInfo');
+        const cardNameEl = document.getElementById('cardName');
+        const cardImageEl = document.getElementById('cardImage');
+        const cardSetEl = document.getElementById('cardSet');
+        const cardCollectorNumberEl = document.getElementById('cardCollectorNumber');
+        const cardTypeEl = document.getElementById('cardType');
+        const cardOracleTextEl = document.getElementById('cardOracleText');
+        const scryfallLinkEl = document.getElementById('scryfallLink');
+        const errorMessageDiv = document.getElementById('errorMessage');
+        const errorTextEl = document.getElementById('errorText');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+
+        const placeholderImage = 'https://placehold.co/300x418/E2E8F0/4A5568?text=Card+Image';
+
+        function showError(message) {
+            errorTextEl.textContent = message;
+            errorMessageDiv.classList.remove('hidden');
+            cardInfoDiv.classList.add('hidden');
+        }
+
+        function hideError() {
+            errorMessageDiv.classList.add('hidden');
+        }
+
+        function showLoading(isLoading) {
+            loadingIndicator.classList.toggle('hidden', !isLoading);
+            submitButton.disabled = isLoading;
+            submitButton.classList.toggle('opacity-50', isLoading);
+            submitButton.classList.toggle('cursor-not-allowed', isLoading);
+        }
+
+        submitButton.addEventListener('click', async () => {
+            const inputValue = searchInput.value.trim();
+            hideError();
+            cardInfoDiv.classList.add('hidden');
+            cardImageEl.src = placeholderImage;
+
+            // console.log(`User input: "${inputValue}"`); // For debugging
+
+            if (inputValue.length < 3) {
+                showError('Input is too short. Please enter a valid code (e.g., MH101 - at least 2 for set code + 1 for number).');
+                return;
+            }
+
+            const match = inputValue.match(/^([a-zA-Z0-9]{3})([0-9]+[a-zA-Z]?)$/);
+
+            if (!match) {
+                showError('Invalid format. Use format like "MH101" or "LTR2" (Set: 2-5 chars, Number: digits + optional letter).');
+                return;
+            }
+
+            const setCode = match[1].toLowerCase();
+            const originalCardNumber = match[2]; // e.g., "0002" or "007b"
+
+            // --- MODIFICATION START: Normalize card number for API call ---
+            let apiNumberToUse = originalCardNumber;
+            const numberPartsRegex = /^([0]*)?([1-9][0-9]*|[0-9])([a-zA-Z]?)$/; // Regex to separate leading zeros, main number, and suffix
+            const numberMatch = originalCardNumber.match(numberPartsRegex);
+
+            if (numberMatch) {
+                // numberMatch[1] = leading zeros (e.g., "00") or undefined
+                // numberMatch[2] = main numeric part (e.g., "2" from "002", or "7" from "007b")
+                // numberMatch[3] = suffix (e.g., "b") or empty string
+                const mainNumber = numberMatch[2];
+                const suffix = numberMatch[3] || ""; // Ensure suffix is a string
+                apiNumberToUse = mainNumber + suffix; // e.g., "2" or "7b"
+            }
+            // If regex doesn't match (e.g. "0a" which is unusual but could be typed),
+            // it will fall back to originalCardNumber, which Scryfall might handle.
+            // console.log(`Original number: "${originalCardNumber}", API number: "${apiNumberToUse}"`); // For debugging
+            // --- MODIFICATION END ---
+
+            const apiUrl = `https://api.scryfall.com/cards/${setCode}/${apiNumberToUse}`;
+            // console.log(`Constructed API URL: "${apiUrl}"`); // For debugging
+
+            showLoading(true);
+
+            try {
+                const response = await fetch(apiUrl);
+                // console.log(`API Response Status: ${response.status}, OK: ${response.ok}`); // For debugging
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => null);
+                    let detail = 'Could not fetch card data.';
+                    if (errorData && errorData.details) {
+                        detail = errorData.details;
+                    } else if (response.status === 404) {
+                        // Clarify what was searched for if it was modified
+                        let searchedAsMsg = (originalCardNumber !== apiNumberToUse) ? ` (searched as '${apiNumberToUse}')` : '';
+                        detail = `Card with set code '${setCode}' and number '${originalCardNumber}'${searchedAsMsg} not found. Please check the code and number.`;
+                    } else {
+                        detail = `API request failed with status: ${response.status}.`;
+                    }
+                    throw new Error(detail);
+                }
+
+                const cardData = await response.json();
+
+                cardNameEl.textContent = cardData.name || 'N/A';
+                if (cardData.image_uris && cardData.image_uris.normal) {
+                    cardImageEl.src = cardData.image_uris.normal;
+                } else if (cardData.card_faces && cardData.card_faces[0] && cardData.card_faces[0].image_uris && cardData.card_faces[0].image_uris.normal) {
+                    cardImageEl.src = cardData.card_faces[0].image_uris.normal;
+                } else {
+                    cardImageEl.src = placeholderImage;
+                }
+                cardImageEl.alt = cardData.name || 'Card Image';
+                cardSetEl.textContent = cardData.set_name ? `${cardData.set_name.toUpperCase()} (${cardData.set.toUpperCase()})` : 'N/A';
+                
+                // Display the collector number AS THE USER TYPED IT (with leading zeros if any)
+                cardCollectorNumberEl.textContent = originalCardNumber; 
+                
+                cardTypeEl.textContent = cardData.type_line || 'N/A';
+                cardOracleTextEl.textContent = cardData.oracle_text || (cardData.card_faces && cardData.card_faces[0].oracle_text ? cardData.card_faces[0].oracle_text : 'N/A');
+                scryfallLinkEl.href = cardData.scryfall_uri || '#';
+
+                cardInfoDiv.classList.remove('hidden');
+                resultsDiv.classList.remove('hidden');
+
+            } catch (error) {
+                // console.error('Error fetching card data:', error); // For debugging
+                showError(error.message || 'An unexpected error occurred.');
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        searchInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                submitButton.click();
+            }
+        });
+
+        cardImageEl.src = placeholderImage;
+    </script>
+
+</body>
+</html>
